@@ -1,0 +1,26 @@
+{
+  "session_id": "sesion_20250319_175208",
+  "created_at": "2025-03-19T17:53:43.249256",
+  "messages": [
+    {
+      "type": "human",
+      "content": "hi mi name is manolo",
+      "timestamp": "2025-03-19T17:53:43.249322"
+    },
+    {
+      "type": "ai",
+      "content": "¡Hola, Manolo! ¿En qué puedo ayudarte hoy? 😊",
+      "timestamp": "2025-03-19T17:53:43.249391"
+    },
+    {
+      "type": "human",
+      "content": "cuál es mi nombre?",
+      "timestamp": "2025-03-19T17:53:43.249412"
+    },
+    {
+      "type": "ai",
+      "content": "Tu nombre es Manolo. 😊 ¿Hay algo más en lo que pueda ayudarte, Manolo?",
+      "timestamp": "2025-03-19T17:53:43.249443"
+    }
+  ]
+}

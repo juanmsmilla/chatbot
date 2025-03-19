@@ -8,6 +8,10 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.messages import HumanMessage, AIMessage
 
+
+PATH_CHATS="chats"
+
+
 # Cargar variables de entorno
 load_dotenv()
 
@@ -28,11 +32,13 @@ prompt = ChatPromptTemplate.from_messages([
 # 3. Funciones de persistencia mejoradas
 def get_session_files():
     """Obtiene todos los archivos de sesión existentes"""
-    return [f for f in os.listdir() if f.startswith("chat_") and f.endswith(".json")]
+    if not os.path.exists(PATH_CHATS):
+        return []
+    return [f for f in os.listdir(PATH_CHATS) if f.startswith("chat_") and f.endswith(".json")]
 
 def load_history(session_file: str) -> tuple[str, ChatMessageHistory]:
     """Carga el historial desde un archivo incluyendo el session_id"""
-    with open(session_file, "r", encoding="utf-8") as f:
+    with open(os.path.join(PATH_CHATS, session_file), "r", encoding="utf-8") as f:
         data = json.load(f)
     
     history = ChatMessageHistory()
@@ -46,7 +52,8 @@ def load_history(session_file: str) -> tuple[str, ChatMessageHistory]:
 
 def save_history(session_id: str, history: ChatMessageHistory) -> None:
     """Guarda el historial con metadata de sesión"""
-    filename = f"chat_{session_id}.json"
+    os.makedirs(PATH_CHATS, exist_ok=True)
+    filename = os.path.join(PATH_CHATS, f"chat_{session_id}.json")
     data = {
         "session_id": session_id,
         "created_at": datetime.now().isoformat(),
@@ -73,7 +80,7 @@ def select_session() -> tuple[str, ChatMessageHistory]:
     
     print("\nConversaciones guardadas:")
     for i, session in enumerate(sessions, 1):
-        with open(session, "r") as f:
+        with open(os.path.join(PATH_CHATS, session), "r") as f:
             data = json.load(f)
         print(f"{i}. {data['session_id']} - {data['created_at']}")
     
@@ -142,6 +149,6 @@ if __name__ == "__main__":
         save_choice = input("\n¿Deseas guardar la conversación? (s/n): ").lower()
         if save_choice == "s":
             save_history(session_id, message_history_store[session_id])
-            print(f"Conversación guardada como: chat_{session_id}.json")
+            print(f"Conversación guardada como: chats/chat_{session_id}.json")
         else:
             print("Conversación no guardada.")

@@ -6,11 +6,11 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_deepseek import ChatDeepSeek
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage 
 
 
-PATH_CHATS="chats"
-
+CHATS_DIR = "chats"
+CONTEXT_INSTRUCTIONS = "Eres un asistente de IA útil. Responde en español."
 
 # Cargar variables de entorno
 load_dotenv()
@@ -24,7 +24,7 @@ chat = ChatDeepSeek(
 
 # 2. Plantilla del prompt con historial
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "Eres un asistente de IA útil. Responde en español."),
+    ("system", CONTEXT_INSTRUCTIONS),
     MessagesPlaceholder(variable_name="chat_history"),
     ("human", "{user_input}"),
 ])
@@ -32,13 +32,13 @@ prompt = ChatPromptTemplate.from_messages([
 # 3. Funciones de persistencia mejoradas
 def get_session_files():
     """Obtiene todos los archivos de sesión existentes"""
-    if not os.path.exists(PATH_CHATS):
+    if not os.path.exists(CHATS_DIR):
         return []
-    return [f for f in os.listdir(PATH_CHATS) if f.startswith("chat_") and f.endswith(".json")]
+    return [f for f in os.listdir(CHATS_DIR) if f.startswith("chat_") and f.endswith(".json")]
 
 def load_history(session_file: str) -> tuple[str, ChatMessageHistory]:
     """Carga el historial desde un archivo incluyendo el session_id"""
-    with open(os.path.join(PATH_CHATS, session_file), "r", encoding="utf-8") as f:
+    with open(os.path.join(CHATS_DIR, session_file), "r", encoding="utf-8") as f:
         data = json.load(f)
     
     history = ChatMessageHistory()
@@ -52,8 +52,8 @@ def load_history(session_file: str) -> tuple[str, ChatMessageHistory]:
 
 def save_history(session_id: str, history: ChatMessageHistory) -> None:
     """Guarda el historial con metadata de sesión"""
-    os.makedirs(PATH_CHATS, exist_ok=True)
-    filename = os.path.join(PATH_CHATS, f"chat_{session_id}.json")
+    os.makedirs(CHATS_DIR, exist_ok=True)
+    filename = os.path.join(CHATS_DIR, f"chat_{session_id}.json")
     data = {
         "session_id": session_id,
         "created_at": datetime.now().isoformat(),
@@ -80,7 +80,7 @@ def select_session() -> tuple[str, ChatMessageHistory]:
     
     print("\nConversaciones guardadas:")
     for i, session in enumerate(sessions, 1):
-        with open(os.path.join(PATH_CHATS, session), "r") as f:
+        with open(os.path.join("chats", session), "r") as f:
             data = json.load(f)
         print(f"{i}. {data['session_id']} - {data['created_at']}")
     
@@ -119,17 +119,34 @@ chain_with_history = RunnableWithMessageHistory(
     history_messages_key="chat_history"
 )
 
-# 6. Flujo principal mejorado
 if __name__ == "__main__":
-    # Cargar o crear sesión
-    session_id, history = select_session()
+    # Crear nueva sesión por defecto
+    session_id, history = create_new_session()
     message_history_store[session_id] = history
     
-    # Bucle de conversación
+    print("\n--- Modo Chat Activo (escribe 'exit' para salir) ---")
+    print("Escribe 'chat' o 'chats' para ver conversaciones guardadas")
+    
+    # Capturar primera entrada
+    first_input = input("\nTú: ").strip().lower()
+    
+    if first_input in ['chat', 'chats']:
+        # Seleccionar sesión existente
+        new_session_id, new_history = select_session()
+        session_id = new_session_id
+        message_history_store[session_id] = new_history
+    elif first_input != 'exit':
+        # Procesar primera entrada como mensaje
+        response = chain_with_history.invoke(
+            {"user_input": first_input},
+            config={"configurable": {"session_id": session_id}}
+        )
+        print(f"\nAsistente: {response.content}")
+    
+    # Bucle de conversación para entradas posteriores
     try:
-        print("\n--- Modo Chat Activo (escribe 'exit' para salir) ---")
         while True:
-            user_input = input("\nTú: ")
+            user_input = input("\nTú: ").strip()
             
             if user_input.lower() == 'exit':
                 break
@@ -138,17 +155,15 @@ if __name__ == "__main__":
                 {"user_input": user_input},
                 config={"configurable": {"session_id": session_id}}
             )
-            
             print(f"\nAsistente: {response.content}")
             
     except KeyboardInterrupt:
         print("\nInterrupción detectada...")
     
     finally:
-        # Preguntar por guardado al salir
         save_choice = input("\n¿Deseas guardar la conversación? (s/n): ").lower()
         if save_choice == "s":
             save_history(session_id, message_history_store[session_id])
-            print(f"Conversación guardada como: chats/chat_{session_id}.json")
+            print(f"Conversación guardada como: chat_{session_id}.json")
         else:
             print("Conversación no guardada.")

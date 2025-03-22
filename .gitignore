@@ -4,3 +4,4 @@ __pycache__/
 Pipfile.lock
 TODO.md
 sessions/
+.vscode/
